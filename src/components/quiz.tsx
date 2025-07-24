@@ -2,7 +2,6 @@
 'use client';
 
 import { useState } from 'react';
-import type { Question, Option } from '@/lib/questions';
 import { generateMotivationalFeedback } from '@/ai/flows/generate-motivational-feedback';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -18,12 +17,25 @@ import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Lightbulb, Sparkles, XCircle, CheckCircle } from 'lucide-react';
 
+// This type is now defined in the new AI flow, but we keep a similar shape here for the component props
+export type Option = {
+  text: string;
+  isCorrect: boolean;
+};
+
+export type Question = {
+  question: string;
+  options: Option[];
+};
+
+
 type QuizProps = {
   questions: Question[];
+  topic: string;
   onQuizComplete: (score: number) => void;
 };
 
-export function Quiz({ questions, onQuizComplete }: QuizProps) {
+export function Quiz({ questions, topic, onQuizComplete }: QuizProps) {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<Option | null>(null);
@@ -39,16 +51,17 @@ export function Quiz({ questions, onQuizComplete }: QuizProps) {
 
     setIsAnswered(true);
     setSelectedAnswer(option);
-    setIsFeedbackLoading(true);
+    const correct = option.isCorrect;
 
-    if (option.isCorrect) {
+    if (correct) {
       setScore((prev) => prev + 1);
     }
-
+    
+    setIsFeedbackLoading(true);
     try {
       const feedbackResult = await generateMotivationalFeedback({
-        isCorrect: option.isCorrect,
-        questionTopic: currentQuestion.topic,
+        isCorrect: correct,
+        questionTopic: topic,
       });
       setMotivationalFeedback(feedbackResult.feedback);
     } catch (error) {
@@ -69,12 +82,16 @@ export function Quiz({ questions, onQuizComplete }: QuizProps) {
       onQuizComplete(score);
     }
   };
+  
+  if (!currentQuestion) {
+    return <div>Error: Question not found.</div>;
+  }
 
   return (
     <Card className="w-full shadow-lg">
       <CardHeader>
         <div className="flex justify-between items-center mb-4">
-          <CardTitle className="font-headline text-2xl">Quiz Time!</CardTitle>
+          <CardTitle className="font-headline text-2xl capitalize">{topic.replace(/-/g, ' ')} Quiz</CardTitle>
           <div className="text-lg font-semibold">
             {currentQuestionIndex + 1} / {questions.length}
           </div>

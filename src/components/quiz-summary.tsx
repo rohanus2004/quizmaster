@@ -12,23 +12,61 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Award, Repeat } from 'lucide-react';
+import { Award, Repeat, Trophy } from 'lucide-react';
+import { useAuth } from '@/hooks/use-auth';
+import type { LeaderboardEntry } from '@/app/leaderboard/page';
+import Link from 'next/link';
 
 type QuizSummaryProps = {
   score: number;
   totalQuestions: number;
+  topic: string;
   onRestart: () => void;
 };
 
-export function QuizSummary({ score, totalQuestions, onRestart }: QuizSummaryProps) {
-  const [highScore, setHighScore] = useLocalStorage('quiz-whiz-highscore', 0);
-  const percentage = Math.round((score / totalQuestions) * 100);
+export function QuizSummary({ score, totalQuestions, topic, onRestart }: QuizSummaryProps) {
+  const { user } = useAuth();
+  const [leaderboard, setLeaderboard] = useLocalStorage<LeaderboardEntry[]>('quiz-whiz-leaderboard', []);
+  const percentage = totalQuestions > 0 ? Math.round((score / totalQuestions) * 100) : 0;
+  
+  const personalBest = leaderboard
+    .filter(entry => entry.userName === user?.displayName && entry.topic === topic)
+    .reduce((max, entry) => (entry.score > max ? entry.score : max), score);
 
   useEffect(() => {
-    if (score > highScore) {
-      setHighScore(score);
+    if (user?.displayName) {
+      const newEntry: LeaderboardEntry = {
+        score,
+        topic,
+        userName: user.displayName,
+        date: new Date().toISOString(),
+      };
+
+      const userExistingScoreIndex = leaderboard.findIndex(
+        (entry) => entry.userName === user.displayName && entry.topic === topic
+      );
+
+      let updatedLeaderboard = [...leaderboard];
+
+      if (userExistingScoreIndex !== -1) {
+        // User has an existing score for this topic
+        if (score > updatedLeaderboard[userExistingScoreIndex].score) {
+          // New score is higher, so we update it
+          updatedLeaderboard[userExistingScoreIndex] = newEntry;
+        }
+      } else {
+        // No existing score for this user and topic, so add the new entry
+        updatedLeaderboard.push(newEntry);
+      }
+      
+      // Sort and slice to maintain top 10
+      updatedLeaderboard = updatedLeaderboard
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 10);
+      
+      setLeaderboard(updatedLeaderboard);
     }
-  }, [score, highScore, setHighScore]);
+  }, [score, topic, user]);
 
   return (
     <Card className="w-full shadow-lg text-center">
@@ -57,7 +95,7 @@ export function QuizSummary({ score, totalQuestions, onRestart }: QuizSummaryPro
             <circle
               className="text-primary"
               strokeWidth="10"
-              strokeDasharray="283"
+              strokeDasharray={283}
               strokeDashoffset={283 - (283 * percentage) / 100}
               strokeLinecap="round"
               stroke="currentColor"
@@ -86,17 +124,23 @@ export function QuizSummary({ score, totalQuestions, onRestart }: QuizSummaryPro
           <div className="text-center">
             <div className="flex items-center justify-center gap-1">
                 <Award className="h-6 w-6 text-primary" />
-                <p className="text-2xl font-bold">{highScore}</p>
+                <p className="text-2xl font-bold">{personalBest}</p>
             </div>
-            <p className="text-muted-foreground">High Score</p>
+            <p className="text-muted-foreground">Personal Best</p>
           </div>
         </div>
 
       </CardContent>
-      <CardFooter className="flex justify-center">
+      <CardFooter className="flex flex-col sm:flex-row justify-center gap-4">
         <Button onClick={onRestart} size="lg">
           <Repeat className="mr-2 h-5 w-5" />
           Play Again
+        </Button>
+        <Button asChild variant="outline" size="lg">
+            <Link href="/leaderboard">
+                <Trophy className="mr-2 h-5 w-5" />
+                View Leaderboard
+            </Link>
         </Button>
       </CardFooter>
     </Card>

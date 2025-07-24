@@ -1,11 +1,12 @@
 
 'use client';
 
-import { useState, useCallback } from 'react';
-import { Quiz } from '@/components/quiz';
-import { QuizSummary } from '@/components/quiz-summary';
-import { questions as allQuestions, Question } from '@/lib/questions';
-import { Button } from '@/components/ui/button';
+import { LogOut, BrainCircuit, Binary, Cpu, Database } from 'lucide-react';
+import { useAuth } from '@/hooks/use-auth';
+import { auth } from '@/lib/firebase';
+import { signOut } from 'firebase/auth';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import {
   Card,
   CardContent,
@@ -14,35 +15,38 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Rocket, LogOut, Code, Cpu, Database, BrainCircuit } from 'lucide-react';
-import { useAuth } from '@/hooks/use-auth';
-import { auth } from '@/lib/firebase';
-import { signOut } from 'firebase/auth';
-import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
 
-const shuffleArray = (array: any[]) => {
-  return [...array].sort(() => Math.random() - 0.5);
-};
-
-const getUniqueQuestions = (count: number) => {
-  return shuffleArray(allQuestions).slice(0, count);
-};
+const topics = [
+  {
+    name: 'Data Structures',
+    description: 'Test your knowledge on stacks, queues, trees, and more.',
+    path: 'data-structures',
+    icon: Database,
+  },
+  {
+    name: 'Algorithms',
+    description: 'Challenge yourself with questions on sorting, searching, and complexity.',
+    path: 'algorithms',
+    icon: BrainCircuit,
+  },
+  {
+    name: 'Operating Systems',
+    description: 'Dive into concepts like memory management and process scheduling.',
+    path: 'operating-systems',
+    icon: Cpu,
+  },
+  {
+    name: 'DBMS',
+    description: 'Explore questions on databases, SQL, and data modeling.',
+    path: 'dbms',
+    icon: Binary,
+  },
+];
 
 export default function Home() {
-  const [questions, setQuestions] = useState<Question[]>([]);
-  const [quizStarted, setQuizStarted] = useState(false);
-  const [quizFinished, setQuizFinished] = useState(false);
-  const [finalScore, setFinalScore] = useState(0);
   const { user } = useAuth();
   const router = useRouter();
-
-  const startQuiz = () => {
-    setQuestions(getUniqueQuestions(10));
-    setQuizStarted(true);
-    setQuizFinished(false);
-    setFinalScore(0);
-  };
 
   const handleLogout = async () => {
     try {
@@ -52,35 +56,14 @@ export default function Home() {
       console.error('Failed to log out', error);
     }
   };
-  
-  const handleQuizComplete = (score: number) => {
-    setFinalScore(score);
-    setQuizFinished(true);
-    setQuizStarted(false); // Reset for the next start
-  };
 
-  const handleRestart = () => {
-    startQuiz();
-  };
-  
-  const handleStart = () => {
-    startQuiz();
-  }
-  
   if (!user) {
-    return null; // Or a loading spinner, since the AuthProvider will redirect
+    return null; // Or a loading spinner
   }
-
-  const ShiningIcon = ({ icon: Icon, colorClass }: { icon: React.ElementType, colorClass: string }) => (
-    <div className="relative group">
-      <Icon className={`mr-2 h-5 w-5 ${colorClass}`} />
-      <div className={`absolute -inset-1 bg-gradient-to-r ${colorClass} rounded-full blur-sm opacity-0 group-hover:opacity-50 transition-opacity duration-300`}></div>
-    </div>
-  );
 
   return (
     <main className="container mx-auto flex flex-col items-center justify-center p-4 sm:p-8">
-      <div className="w-full max-w-2xl relative">
+      <div className="w-full max-w-4xl relative">
         <div className="absolute top-0 right-0 flex items-center gap-2 -mt-2">
           <span className="text-sm text-muted-foreground hidden sm:inline">
             Welcome, <span className="font-bold">{user.displayName || user.email}</span>
@@ -90,50 +73,29 @@ export default function Home() {
             Logout
           </Button>
         </div>
-        <div className="pt-12">
-            {!quizStarted ? (
-            <Card className="shadow-lg border-0 overflow-hidden bg-card">
-                <CardHeader className="text-center p-8 bg-primary/5">
-                <CardTitle className="font-headline text-5xl bg-clip-text text-transparent bg-gradient-to-br from-primary to-primary/60">Welcome to the Quiz!!</CardTitle>
-                <CardDescription className="text-center pt-4 text-lg">
-                    Test your Computer Science knowledge with our quick and fun quiz.
-                </CardDescription>
-                </CardHeader>
-                <CardContent className="flex flex-col items-center gap-6 p-8">
-                  <p className="text-center text-muted-foreground max-w-md">
-                    Challenge yourself with questions from various Computer Science domains. See if you can beat your high score!
-                  </p>
-                  <div className="flex flex-wrap justify-center gap-4 pt-4">
-                    <Badge variant="secondary" className="px-4 py-2 text-sm border-transparent bg-primary/10 text-black hover:bg-primary/20">
-                      <ShiningIcon icon={Code} colorClass="text-blue-500" />
-                      Data Structures
-                    </Badge>
-                    <Badge variant="secondary" className="px-4 py-2 text-sm border-transparent bg-primary/10 text-black hover:bg-primary/20">
-                      <ShiningIcon icon={BrainCircuit} colorClass="text-blue-500" />
-                      Algorithms
-                    </Badge>
-                    <Badge variant="secondary" className="px-4 py-2 text-sm border-transparent bg-primary/10 text-black hover:bg-primary/20">
-                       <ShiningIcon icon={Database} colorClass="text-blue-500" />
-                       DBMS
-                    </Badge>
-                    <Badge variant="secondary" className="px-4 py-2 text-sm border-transparent bg-primary/10 text-black hover:bg-primary/20">
-                       <ShiningIcon icon={Cpu} colorClass="text-blue-500" />
-                       Operating Systems
-                    </Badge>
+        <div className="text-center pt-12 pb-8">
+          <h1 className="font-headline text-5xl bg-clip-text text-transparent bg-gradient-to-br from-primary to-primary/60">Choose Your Challenge</h1>
+          <p className="text-lg text-muted-foreground mt-4">Select a topic below to start the quiz.</p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {topics.map((topic) => (
+            <Link key={topic.path} href={`/quiz/${topic.path}`} passHref>
+              <Card className="shadow-lg border-0 bg-card h-full flex flex-col group hover:border-primary transition-all duration-300 transform hover:-translate-y-1">
+                <CardHeader>
+                  <div className="flex items-center gap-4">
+                    <topic.icon className="h-10 w-10 text-primary" />
+                    <CardTitle className="font-headline text-2xl text-primary">{topic.name}</CardTitle>
                   </div>
+                </CardHeader>
+                <CardContent className="flex-grow">
+                  <CardDescription>{topic.description}</CardDescription>
                 </CardContent>
-                <CardFooter className="flex justify-center p-8 bg-primary/5">
-                <Button onClick={handleStart} size="lg" className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-lg hover:shadow-cyan-500/50 transform hover:-translate-y-1 transition-all duration-300">
-                    <Rocket className="mr-2 h-5 w-5" />
-                    Start Quiz
-                </Button>
+                <CardFooter>
+                  <Button className="w-full">Start Quiz</Button>
                 </CardFooter>
-            </Card>
-            ) : !quizFinished ? (
-            <Quiz questions={questions} onQuizComplete={handleQuizComplete} />
-            ) : (
-            <QuizSummary score={finalScore} totalQuestions={questions.length} onRestart={handleRestart} />
-            )}
+              </Card>
+            </Link>
+          ))}
         </div>
       </div>
     </main>
