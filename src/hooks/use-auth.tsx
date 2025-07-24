@@ -41,11 +41,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user, loading, pathname, router]);
 
 
-  return (
-    <AuthContext.Provider value={{ user, loading }}>
-      {loading ? <div className="flex h-screen items-center justify-center">Loading...</div> : children}
-    </AuthContext.Provider>
-  );
+  if (loading) {
+    return <div className="flex h-screen items-center justify-center">Loading...</div>;
+  }
+  
+  // Render children only if a user is authenticated or if on an auth page
+  if (user || pathname === '/login' || pathname === '/signup') {
+    return (
+      <AuthContext.Provider value={{ user, loading: false }}>
+        {children}
+      </AuthContext.Provider>
+    );
+  }
+
+  // Otherwise, continue showing loading state while redirect happens
+  return <div className="flex h-screen items-center justify-center">Loading...</div>;
 }
 
 export const useAuth = () => useContext(AuthContext);
