@@ -5,6 +5,7 @@ import React, { createContext, useContext, useEffect, useState, ReactNode } from
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { useRouter, usePathname } from 'next/navigation';
+import { Loader2 } from 'lucide-react';
 
 interface AuthContextType {
   user: User | null;
@@ -20,11 +21,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
 
   useEffect(() => {
+    // onAuthStateChanged returns an unsubscribe function
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user);
       setLoading(false);
     });
 
+    // Cleanup subscription on unmount
     return () => unsubscribe();
   }, []);
 
@@ -40,22 +43,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [user, loading, pathname, router]);
 
-
   if (loading) {
-    return <div className="flex h-screen items-center justify-center">Loading...</div>;
-  }
-  
-  // Render children only if a user is authenticated or if on an auth page, otherwise, the redirect is in flight
-  if (user || pathname === '/login' || pathname === '/signup') {
     return (
-      <AuthContext.Provider value={{ user, loading }}>
-        {children}
-      </AuthContext.Provider>
+      <div className="flex h-screen w-full items-center justify-center">
+        <Loader2 className="h-16 w-16 animate-spin text-primary" />
+      </div>
     );
   }
 
-  // Otherwise, continue showing loading state while redirect happens
-  return <div className="flex h-screen items-center justify-center">Loading...</div>;
+  const isAuthPage = pathname === '/login' || pathname === '/signup';
+  if (!user && !isAuthPage) {
+    // While redirecting, we can show a loader or nothing. 
+    // The loader is better for user experience.
+    return (
+      <div className="flex h-screen w-full items-center justify-center">
+        <Loader2 className="h-16 w-16 animate-spin text-primary" />
+      </div>
+    );
+  }
+  
+  if (user && isAuthPage) {
+     return (
+      <div className="flex h-screen w-full items-center justify-center">
+        <Loader2 className="h-16 w-16 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+
+  return (
+    <AuthContext.Provider value={{ user, loading }}>
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 export const useAuth = () => useContext(AuthContext);

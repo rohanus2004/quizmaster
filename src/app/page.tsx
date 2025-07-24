@@ -1,9 +1,8 @@
 
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
-import { LogOut, BrainCircuit, Binary, Cpu, Database } from 'lucide-react';
+import { LogOut, BrainCircuit, Binary, Cpu, Database, Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { auth } from '@/lib/firebase';
 import { signOut } from 'firebase/auth';
@@ -18,7 +17,6 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { questions } from '@/lib/questions';
-import type { Question } from '@/lib/questions';
 
 type Topic = {
   name: string;
@@ -55,9 +53,9 @@ const topics: Topic[] = [
 ];
 
 export default function Home() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const router = useRouter();
-  
+
   const handleLogout = async () => {
     try {
       await signOut(auth);
@@ -68,7 +66,9 @@ export default function Home() {
   };
   
   if (!user) {
-    return null; 
+    // This can be a loading spinner or null, but since AuthProvider handles the main loading state,
+    // this will only flash briefly if at all during redirection.
+    return null;
   }
 
   return (
@@ -104,7 +104,7 @@ export default function Home() {
                 </CardContent>
                 <CardFooter>
                   <Button asChild className="w-full">
-                    <Link href={{ pathname: `/quiz/${topic.path}`, query: { questions: JSON.stringify(topicQuestions) } }}>
+                    <Link href={`/quiz/${topic.path}`}>
                       Start Quiz
                     </Link>
                   </Button>

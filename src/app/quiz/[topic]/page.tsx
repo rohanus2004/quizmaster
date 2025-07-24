@@ -1,52 +1,45 @@
 
 'use client';
 
-import { useState, useEffect, Suspense, use } from 'react';
+import { useState, useEffect, Suspense } from 'react';
+import { use } from 'react';
 import { Quiz } from '@/components/quiz';
-import { Question } from '@/lib/questions';
+import { questions, Question } from '@/lib/questions';
 import { QuizSummary } from '@/components/quiz-summary';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 
 type QuizPageState = 'loading' | 'playing' | 'summary';
 
 function QuizComponent({ params }: { params: { topic: string } }) {
   const router = useRouter();
-  const searchParams = useSearchParams();
-
   const [pageState, setPageState] = useState<QuizPageState>('loading');
-  const [questions, setQuestions] = useState<Question[]>([]);
+  const [quizQuestions, setQuizQuestions] = useState<Question[]>([]);
   const [finalScore, setFinalScore] = useState(0);
 
-  const { topic } = params;
+  // Use React.use to correctly unwrap promise-like props in Server Components
+  const resolvedParams = use(Promise.resolve(params));
+  const { topic } = resolvedParams;
 
   useEffect(() => {
     const loadQuestions = () => {
       setPageState('loading');
+      const filteredQuestions = questions.filter(q => q.topic === topic);
       
-      const questionsQueryParam = searchParams.get('questions');
-      if (questionsQueryParam) {
-        try {
-          const passedQuestions = JSON.parse(questionsQueryParam);
-          if (passedQuestions && passedQuestions.length > 0) {
-            setQuestions(passedQuestions);
-            setPageState('playing');
-            return;
-          }
-        } catch (e) {
-          console.error("Failed to parse questions from query param", e);
-        }
+      if (filteredQuestions.length > 0) {
+        setQuizQuestions(filteredQuestions);
+        setPageState('playing');
+      } else {
+        console.error("No questions found for quiz topic:", topic);
+        router.push('/');
       }
-      // If we reach here, something went wrong, maybe redirect.
-      console.error("No questions found for quiz.");
-      router.push('/');
     };
 
     loadQuestions();
-  }, [topic, searchParams, router]);
+  }, [topic, router]);
 
   const handleQuizComplete = (score: number) => {
     setFinalScore(score);
@@ -55,7 +48,7 @@ function QuizComponent({ params }: { params: { topic: string } }) {
 
   const handleRestart = () => {
     setFinalScore(0);
-    setQuestions([]);
+    setQuizQuestions([]);
     router.push('/');
   };
 
@@ -81,9 +74,9 @@ function QuizComponent({ params }: { params: { topic: string } }) {
           </div>
         );
       case 'playing':
-        return <Quiz questions={questions} topic={topic} onQuizComplete={handleQuizComplete} />;
+        return <Quiz questions={quizQuestions} topic={topic} onQuizComplete={handleQuizComplete} />;
       case 'summary':
-        return <QuizSummary score={finalScore} totalQuestions={questions.length} topic={topic} onRestart={handleRestart} />;
+        return <QuizSummary score={finalScore} totalQuestions={quizQuestions.length} topic={topic} onRestart={handleRestart} />;
       default:
         return null;
     }
@@ -110,8 +103,6 @@ function QuizComponent({ params }: { params: { topic: string } }) {
 
 
 export default function QuizPage({ params }: { params: { topic: string } }) {
-  // Although params is a promise, we are in a Suspense boundary,
-  // so we can use it directly in the child component which will suspend.
   return (
     <Suspense fallback={<div className="flex h-screen w-full items-center justify-center">Loading quiz...</div>}>
       <QuizComponent params={params} />
