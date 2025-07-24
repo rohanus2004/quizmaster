@@ -45,10 +45,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return <div className="flex h-screen items-center justify-center">Loading...</div>;
   }
   
-  // Render children only if a user is authenticated or if on an auth page
+  // Render children only if a user is authenticated or if on an auth page, otherwise, the redirect is in flight
   if (user || pathname === '/login' || pathname === '/signup') {
     return (
-      <AuthContext.Provider value={{ user, loading: false }}>
+      <AuthContext.Provider value={{ user, loading }}>
         {children}
       </AuthContext.Provider>
     );
