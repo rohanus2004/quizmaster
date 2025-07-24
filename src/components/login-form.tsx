@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -52,10 +53,17 @@ export function LoginForm() {
       await signInWithEmailAndPassword(auth, values.email, values.password);
       router.push('/');
     } catch (error: any) {
+      let description = 'An unexpected error occurred. Please try again.';
+      if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
+        description = 'Invalid email or password. Please try again.';
+      } else if (error.code === 'auth/operation-not-allowed') {
+        description = 'Authentication is not enabled. Please enable it in your Firebase project settings or check your API key restrictions.'
+      }
+      
       toast({
         variant: 'destructive',
         title: 'Authentication Failed',
-        description: 'Invalid email or password. Please try again.',
+        description,
       });
     } finally {
       setIsLoading(false);

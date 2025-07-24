@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -55,11 +56,13 @@ export function SignupForm() {
       await updateProfile(userCredential.user, {
         displayName: values.name,
       });
-      router.push('/');
+      router.push('/login');
     } catch (error: any) {
       let errorMessage = 'An unexpected error occurred. Please try again.';
       if (error.code === 'auth/email-already-in-use') {
         errorMessage = 'This email is already in use. Please try a different email or login.';
+      } else if (error.code === 'auth/operation-not-allowed') {
+        errorMessage = 'Signup is currently disabled. Please enable the Identity Toolkit API in your Google Cloud project console or check your API key restrictions.'
       } else if (error.code) {
         // Firebase provides error codes that are more reliable than messages.
         errorMessage = `An error occurred: ${error.code.replace('auth/', '')}`;
