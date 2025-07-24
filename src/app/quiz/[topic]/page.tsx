@@ -12,25 +12,35 @@ import {
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 type QuizPageState = 'loading' | 'playing' | 'summary';
 
-export default function QuizPage({ params }: { params: { topic: string } }) {
-  const resolvedParams = use(params);
+export default function QuizPage({ params }: { params: Promise<{ topic: string }> }) {
+  const router = useRouter();
+  const location = typeof window !== 'undefined' ? window.history.state : {};
   const [pageState, setPageState] = useState<QuizPageState>('loading');
   const [questions, setQuestions] = useState<Question[]>([]);
   const [finalScore, setFinalScore] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
-  const topic = resolvedParams.topic || 'computer-science';
-
-  const loadQuestions = async (forceRefresh = false) => {
+  const { topic } = use(params);
+  
+  const loadQuestions = async () => {
     setPageState('loading');
     setError(null);
+
+    // Try to get questions from router state first
+    if (location?.options?.state?.questions) {
+      setQuestions(location.options.state.questions as Question[]);
+      setPageState('playing');
+      return;
+    }
+
+    // Fallback to fetching questions if not in state
     try {
       const result: QuizQuestionsOutput = await generateQuizQuestions({ topic: topic.replace(/-/g, ' '), count: 10 });
       if (result.questions && result.questions.length > 0) {
-        // The generated questions already have the correct shape
         setQuestions(result.questions as Question[]);
         setPageState('playing');
       } else {
@@ -46,7 +56,7 @@ export default function QuizPage({ params }: { params: { topic: string } }) {
 
   useEffect(() => {
     loadQuestions();
-  }, [topic]);
+  }, []);
 
   const handleQuizComplete = (score: number) => {
     setFinalScore(score);
@@ -56,7 +66,7 @@ export default function QuizPage({ params }: { params: { topic: string } }) {
   const handleRestart = () => {
     setFinalScore(0);
     setQuestions([]);
-    loadQuestions(true); // Force a refresh of questions
+    router.push('/');
   };
   
   const renderContent = () => {
@@ -67,8 +77,7 @@ export default function QuizPage({ params }: { params: { topic: string } }) {
             {error ? (
               <div className="text-center text-red-500">
                 <p>{error}</p>
-
-                <Button onClick={() => loadQuestions(true)} className="mt-4">Try Again</Button>
+                <Button onClick={() => loadQuestions()} className="mt-4">Try Again</Button>
               </div>
             ) : (
                 <div className="space-y-4">
