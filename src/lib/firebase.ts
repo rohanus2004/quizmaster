@@ -13,6 +13,9 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
+console.log('Firebase config:', firebaseConfig);
+console.log('API Key:', process.env.NEXT_PUBLIC_FIREBASE_API_KEY);
+
 let app: FirebaseApp;
 let auth: Auth;
 
