@@ -1,13 +1,13 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import Link from 'next/link';
 import { LogOut, BrainCircuit, Binary, Cpu, Database } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { auth } from '@/lib/firebase';
 import { signOut } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import {
   Card,
   CardContent,
@@ -17,8 +17,8 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { generateQuizQuestions, QuizQuestionsOutput } from '@/ai/flows/generate-quiz-questions';
-import type { Question } from '@/components/quiz';
+import { questions } from '@/lib/questions';
+import type { Question } from '@/lib/questions';
 
 type Topic = {
   name: string;
@@ -57,33 +57,7 @@ const topics: Topic[] = [
 export default function Home() {
   const { user } = useAuth();
   const router = useRouter();
-  const [loadingTopic, setLoadingTopic] = useState<string | null>(null);
-  const [questionCache, setQuestionCache] = useState<Record<string, Question[]>>({});
-  const [isPrefetching, setIsPrefetching] = useState(true);
-
-  useEffect(() => {
-    const prefetchQuestions = async () => {
-      setIsPrefetching(true);
-      const newCache: Record<string, Question[]> = {};
-      for (const topic of topics) {
-        try {
-          const result = await generateQuizQuestions({ topic: topic.name, count: 10 });
-          if (result.questions) {
-            newCache[topic.path] = result.questions as Question[];
-          }
-        } catch (error) {
-          console.error(`Failed to prefetch questions for ${topic.name}:`, error);
-        }
-      }
-      setQuestionCache(newCache);
-      setIsPrefetching(false);
-    };
-
-    if(user) {
-      prefetchQuestions();
-    }
-  }, [user]);
-
+  
   const handleLogout = async () => {
     try {
       await signOut(auth);
@@ -92,37 +66,9 @@ export default function Home() {
       console.error('Failed to log out', error);
     }
   };
-
-  const handleStartQuiz = async (topicPath: string) => {
-    setLoadingTopic(topicPath);
-    let questions = questionCache[topicPath];
-
-    if (!questions) {
-      // Fallback if pre-fetching failed or is still in progress
-      try {
-        const result = await generateQuizQuestions({ topic: topicPath.replace(/-/g, ' '), count: 10 });
-        if (result.questions && result.questions.length > 0) {
-          questions = result.questions as Question[];
-        } else {
-          console.error('Failed to generate questions.');
-          setLoadingTopic(null);
-          return;
-        }
-      } catch (error) {
-        console.error('Error starting quiz:', error);
-        setLoadingTopic(null);
-        return;
-      }
-    }
-    
-    // Using router state to pass questions
-    router.push(`/quiz/${topicPath}`, {
-      state: { questions },
-    } as any);
-  };
-
+  
   if (!user) {
-    return null; // Or a loading spinner
+    return null; 
   }
 
   return (
@@ -142,28 +88,30 @@ export default function Home() {
           <p className="text-lg text-muted-foreground mt-4">Select a topic below to start the quiz.</p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {topics.map((topic) => (
-            <Card key={topic.path} className="shadow-lg border-0 bg-card h-full flex flex-col group hover:border-primary transition-all duration-300 transform hover:-translate-y-1">
-              <CardHeader>
-                <div className="flex items-center gap-4">
-                  <topic.icon className="h-10 w-10 text-primary" />
-                  <CardTitle className="font-headline text-2xl text-primary">{topic.name}</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent className="flex-grow">
-                <CardDescription>{topic.description}</CardDescription>
-              </CardContent>
-              <CardFooter>
-                <Button 
-                  className="w-full" 
-                  onClick={() => handleStartQuiz(topic.path)} 
-                  disabled={loadingTopic === topic.path || isPrefetching}
-                >
-                  {loadingTopic === topic.path ? 'Starting...' : isPrefetching ? 'Preparing Quizzes...' : 'Start Quiz'}
-                </Button>
-              </CardFooter>
-            </Card>
-          ))}
+          {topics.map((topic) => {
+            const topicQuestions = questions.filter(q => q.topic === topic.path);
+            
+            return (
+              <Card key={topic.path} className="shadow-lg border-0 bg-card h-full flex flex-col group hover:border-primary transition-all duration-300 transform hover:-translate-y-1">
+                <CardHeader>
+                  <div className="flex items-center gap-4">
+                    <topic.icon className="h-10 w-10 text-primary" />
+                    <CardTitle className="font-headline text-2xl text-primary">{topic.name}</CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent className="flex-grow">
+                  <CardDescription>{topic.description}</CardDescription>
+                </CardContent>
+                <CardFooter>
+                  <Button asChild className="w-full">
+                    <Link href={{ pathname: `/quiz/${topic.path}`, query: { questions: JSON.stringify(topicQuestions) } }}>
+                      Start Quiz
+                    </Link>
+                  </Button>
+                </CardFooter>
+              </Card>
+            );
+          })}
         </div>
       </div>
     </main>

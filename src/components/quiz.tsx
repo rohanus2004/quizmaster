@@ -16,17 +16,7 @@ import {
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Lightbulb, Sparkles, XCircle, CheckCircle } from 'lucide-react';
-
-// This type is now defined in the new AI flow, but we keep a similar shape here for the component props
-export type Option = {
-  text: string;
-  isCorrect: boolean;
-};
-
-export type Question = {
-  question: string;
-  options: Option[];
-};
+import type { Question, Option } from '@/lib/questions';
 
 
 type QuizProps = {
